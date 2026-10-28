@@ -1,0 +1,82 @@
+schema_version: '1.0'
+extension:
+  id: roadmap
+  name: AI Roadmap
+  version: 0.2.0
+  description: >-
+    Assemble a spec roadmap for a new AI project from a reusable epic library (reading the
+    constitution), feed the first unfinished epic to /speckit-specify, and keep the roadmap's status in
+    step with specify and implement. Replaces the srobroek/speckit-roadmap extension.
+  author: rafael.escossia
+  license: Apache-2.0
+requires:
+  speckit_version: '>=0.11.6'
+  tools:
+    - name: python3
+      required: true
+    - name: uv
+      required: true
+provides:
+  commands:
+    - name: speckit.roadmap.intake
+      file: commands/speckit.roadmap.intake.md
+      description: >-
+        Interview briefly, read the constitution, and write the project roadmap from the epic library
+    - name: speckit.roadmap.next
+      file: commands/speckit.roadmap.next.md
+      description: >-
+        Find the first unfinished roadmap epic and hand it to specify as the feature description
+    - name: speckit.roadmap.specified
+      file: commands/speckit.roadmap.specified.md
+      description: Mark the epic that was just specified as `specced` and record its spec directory
+    - name: speckit.roadmap.implemented
+      file: commands/speckit.roadmap.implemented.md
+      description: Mark the epic that was just implemented as `implemented` (or `in-progress`)
+    - name: speckit.roadmap.brief
+      file: commands/speckit.roadmap.brief.md
+      description: Read-only briefing of what the roadmap expects for the spec about to be implemented
+    - name: speckit.roadmap.debrief
+      file: commands/speckit.roadmap.debrief.md
+      description: Read-only review of an implemented spec against its roadmap entry
+  scripts:
+    - name: load-config
+      file: scripts/bash/load-config.sh
+      description: Load and validate roadmap extension configuration; emit a JSON contract
+      runtimes:
+        - bash
+      executable: true
+  config:
+    - name: roadmap-config.yml
+      template: config-template.yml
+      description: Roadmap extension configuration (roadmap path, ADR directory, PRD detection globs)
+      required: false
+hooks:
+  after_constitution:
+    command: speckit.roadmap.intake
+    optional: true
+    prompt: Create the project roadmap now? (reads the constitution and asks a short intake)
+    description: Assemble the roadmap from the epic library after the constitution
+  before_specify:
+    command: speckit.roadmap.next
+    optional: false
+    description: Load the first unfinished roadmap epic as the feature description for specify
+  after_specify:
+    command: speckit.roadmap.specified
+    optional: false
+    description: Mark the specified epic as specced
+  before_implement:
+    command: speckit.roadmap.brief
+    optional: true
+    prompt: Review the roadmap for this spec before implementing?
+    description: Surface the roadmap's expectations for the spec about to be built
+  after_implement:
+    command: speckit.roadmap.implemented
+    optional: false
+    description: Mark the implemented epic and offer a debrief
+tags:
+  - roadmap
+  - planning
+  - ai
+defaults:
+  report:
+    max_findings: 50

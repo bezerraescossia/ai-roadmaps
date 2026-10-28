@@ -1,0 +1,161 @@
+---
+description: Two short interviews (which archetypes, then which epics and capabilities), reading the constitution, to write the project roadmap from the AI epic library, or amend an existing roadmap non-destructively.
+scripts:
+  sh: .specify/extensions/roadmap/scripts/bash/load-config.sh
+---
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+You **MUST** consider the user input before proceeding (if not empty).
+
+## Goal
+
+Produce the project's **spec roadmap** at the configured path (default `.specify/memory/roadmap.md`) in
+the spec-kit roadmap template: Vision, Constraints & Decisions, a ledger of Planned Specs with
+dependencies and status, Open Questions. Specs come from the extension's epic library
+(`.specify/extensions/roadmap/epics/`). Two confirmed phases choose what goes in:
+
+1. **Archetypes**: plain questions about the project's shape decide a primary archetype plus included ones.
+2. **Scope**: which epics apply, then which optional capabilities inside them, driven by a project profile.
+
+`/speckit-specify` then takes the first unfinished entry (hook `before_specify`).
+
+## Operating Constraints
+
+- **No fabrication.** Pre-fill from the constitution, the repo and the conversation, then ask only
+  genuine gaps. Unknown answers become `unsure`, which yields `undecided` entries and Open Questions.
+- **Non-destructive.** Never overwrite user-authored content. On amend, add or restatus; strike through
+  superseded content, never delete it.
+- **No estimates.** The library carries none.
+- **Warn, don't block** on dependency conflicts; the user decides.
+- **Propose, don't interrogate.** Phase 2 shows a proposed list for the user to strike from; it does not
+  ask about each capability.
+
+## Outline
+
+1. Run `{SCRIPT}` from the repo root and parse `roadmap_path` and `roadmap_exists`. If it fails, abort and
+   relay its error.
+
+2. **Read the constitution** at `.specify/memory/constitution.md` (if present). Use only what bears on
+   the roadmap, and tell the user what you took from it:
+   - principles that answer interview questions (data sensitivity, safety, evaluation gates, hosting);
+   - principles that become `C-nn` constraints governing specific specs (e.g. a test-first or eval-gate
+     principle governs the specs that need it), referenced by the principle's name or number;
+   - phase-in rules (e.g. "the CI eval gate starts with the first spec with evaluable behavior") for
+     Cross-Cutting Notes.
+   Do not copy the constitution into the roadmap.
+
+3. **Branch on `roadmap_exists`.** If it exists, go to **Amend mode** below.
+
+### Phase 1: which archetypes?
+
+4. Read `.specify/extensions/roadmap/archetypes/_selection.md` and ask its questions (`purpose`, `runtime`,
+   `own_models`, and the framing answers `use_case`, `constraints`, `sensitive_data`) in one round, skipping
+   what the constitution, repo or conversation already answer. Run:
+
+   ```bash
+   uv run .specify/extensions/roadmap/scripts/select_archetypes.py --answers '<json of the answers>'
+   ```
+
+   Show the primary archetype, the included ones and the reasons in plain words. For `unsupported`
+   combinations, say which model needs a separate project. If `needs` is non-empty, ask those questions.
+   If nothing fits (for example a project shape no archetype covers), say so plainly and offer the nearest
+   archetype as a rough start, or stop. **Ask the user to confirm or override before continuing.**
+
+### Phase 2: which epics and capabilities?
+
+5. **Archetype questions.** For the primary archetype, and then for each included archetype, read its file
+   under `.specify/extensions/roadmap/archetypes/` and ask its `intake` questions that have fixed `values`
+   (the gating questions such as `rag`, `tools`, `serving`), plus its other archetype-specific questions.
+   Skip the framing ones already answered in phase 1 (`use_case`, `constraints`, and a free-text
+   `sensitive_data`). Keep each archetype's answers separate, because the same variable name can mean
+   different things. Apply each archetype's "Rules" section; a rule that says to include an archetype is
+   already satisfied by phase 1.
+
+6. **Profile.** Ask one question: is this a **prototype or internal tool** (core scope only), a
+   **production service** (core plus capabilities a production system normally needs), or **critical**
+   (regulated, high stakes or large scale: everything)? Map the answer to `prototype`, `production` or
+   `critical`.
+
+7. **Plan.** Run from the repo root:
+
+   ```bash
+   uv run .specify/extensions/roadmap/scripts/plan.py --archetype <primary> --answers '<json>' \
+       [--include '{"<included archetype>": {<its answers>}}'] --profile <profile> \
+       [--strike <capability ids>] [--add <capability ids>] [--drop E..]
+   ```
+
+   It returns the selected epics, the numbered specs in dependency order (each with its `archetype` and its
+   `capabilities`, every one with `selected` true or false), `conflicts`, and `unbundled` (selected epics no
+   bundle covers; if non-empty, tell the user and stop: it is a library bug).
+
+8. **Show the proposed scope** and let the user adjust it. For each spec list its title, status, and its
+   optional capabilities as "included" or "left out", each with its tier. Ask the user to strike or add
+   items; re-run `plan.py` with `--strike` and `--add` until they confirm. Do not ask about capabilities
+   one by one.
+
+9. **Resolve conflicts.** For each conflict, tell the user which epic needs which dependency and why (read
+   the epic file under `.specify/extensions/roadmap/epics/`), then ask: keep the dependency, or proceed
+   without it. If they proceed, re-run with `--drop` and record the dropped epic as `deferred` or
+   `abandoned` with the reason.
+
+### Write
+
+10. **Draft the roadmap** from `.specify/extensions/roadmap/templates/roadmap-template.md`. Read each member
+    epic file for Description, Outcome, Scope and Decisions, and merge a bundle's members into one spec:
+    - `### NNN — <Bundle title>  [status: planned|undecided|deferred|abandoned]`, with Description,
+      Outcome, **Scope (in) as nested bullets**, Scope (out), `Depends on: NNN, NNN` (or `none`),
+      `Governed by`, Notes.
+    - Bullets tagged `[cap: <id>, tier: <tier>]` in an epic file: write the selected ones as ordinary
+      bullets without the tag. List each unselected one under the spec's **Scope (out)** as
+      `Not needed (<profile> profile): <capability>`, or with the user's reason when they struck it.
+    - Bullets that an epic guards with an intake variable (for example `long_tasks`, `budget_control`,
+      `self_hosted`, `scanned`, `arrival`, `serving`, `labeled_data`) appear only when the answer
+      selects them; if the answer is `unsure`, leave them out and add an Open Question instead. RAG
+      pattern bullets appear only for the chosen pattern.
+    - Epics may carry an "Archetype notes" section; apply the notes for every archetype of the roadmap that
+      uses the epic (the primary and any included ones), and ignore the others. A spec from an included
+      archetype says so in its Notes, and the spec that consumes the model records, in an Open Question,
+      how the model is integrated.
+    - Interview answers that are decisions (provider, store, protocol, hosting) become `C-nn`; each spec
+      they govern lists them under `Governed by`, together with relevant constitution principles.
+    - The epics' undecided "Decisions" become Open Questions: `Qn — <text> (spec NNN)`.
+    - Cross-Cutting Notes: the eval-gate phase-in note, and anything from the constitution that spans
+      specs.
+    - Sync Impact Report: `Version change: (none) → 1.0.0`, plus a `Provenance:` line holding one JSON
+      object with the library version, the phase 1 answers and the `select_archetypes.py` result, each
+      archetype's answers, `profile`, `strike`, `add` and `drop`, so amend mode can re-plan without asking
+      again.
+    - Footer `**Version**: 1.0.0 | **Ratified**: <today> | **Last Amended**: <today>`.
+
+11. **Confirm** the draft with the user, then write it to `roadmap_path`.
+
+12. **Report**: path, specs with statuses, Open Questions, dropped or deferred epics and why, and the
+    capabilities left out. Say that `/speckit-specify` will now take the first `planned` epic, and that
+    `python3 .specify/extensions/roadmap/scripts/export_jira_csv.py <roadmap_path>` exports a Jira CSV.
+
+## Amend mode (roadmap exists)
+
+Read the roadmap first. **Integrity check:** it must have a Sync Impact Report comment, the template
+sections, and the `**Version**: X.Y.Z | **Ratified**: … | **Last Amended**: …` footer. If not, STOP,
+report what is wrong and propose a corrected version for approval; do not touch the file.
+
+Read the `Provenance:` JSON. To change the profile, bring a capability back (`--add`), turn one off
+(`--strike`), add an included archetype or answer a question that was `unsure`, re-run `select_archetypes.py`
+or `plan.py` with the changed inputs and apply only the difference. A capability brought back is moved from
+the spec's Scope (out) into Scope (in).
+
+Ask only about the **delta**: new epics from the library, capabilities, decisions made (an `Open Question`
+becomes a `C-nn`, struck through in the question list), scope changes, status changes, newly discovered open
+questions. Apply non-destructively; re-running with no new input must change nothing. Bump the version:
+
+- **MAJOR** — vision or governance change, or reversing a decision that invalidates entries.
+- **MINOR** — a new spec, constraint, open question, capability, or a material scope change.
+- **PATCH** — wording, or a status change made by hand (hooks do this with `set_status.py`).
+
+Update the Sync Impact Report (and the provenance JSON) and `Last Amended`, then report the version and
+rationale.
