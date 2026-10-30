@@ -23,7 +23,7 @@ commitment to order or scope** — it captures the spec-specific discussion,
 decisions, technology choices, outcomes, and constraints surfaced during the
 constitution and grilling phases so they are not lost before the spec that needs
 them is written. Specs are scoped and clarified when they are actually started.
-Foundations: the project [constitution](constitution.md)[ and any detected PRD].
+Foundations: the project [constitution](constitution.md)[, the project brief (brief.md)][ and any detected PRD].
 
 Status legend (lifecycle): **undecided** · **needs-info** · **planned** ·
 **specced** · **in-progress** · **implemented** · **verified** · **deferred** ·

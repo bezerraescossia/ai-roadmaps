@@ -2,7 +2,7 @@
 archetype: batch-pipeline
 title: Batch / document-processing pipeline
 description: An offline or scheduled pipeline that processes many items (documents, emails, records) with an LLM, rules or a model, stores structured results, and delivers them downstream. No interactive end user.
-library_version: 0.7.0
+library_version: 0.9.0
 source: drafted from general practice and reuse of the llm-service epics; to be corrected from delivered projects
 phases: [discover, build, harden, launch]
 ---
@@ -79,7 +79,7 @@ epic_rules:
   E14: {depends_on: [E02, E17]}
   E23: {depends_on: [E21, E10, E14]}
   E24: {depends_on: [E23]}
-  E15: {depends_on: [E10, E12]}
+  E15: {depends_on: [E10, E12, E64]}
 ```
 
 ## Bundles
@@ -88,6 +88,8 @@ epic_rules:
 
 ```yaml
 bundles:
+  - title: Serving contract & stub
+    members: [E64]
   - title: Data assessment
     members: [E17]
   - title: Foundation

@@ -42,7 +42,8 @@ class PlanTests(unittest.TestCase):
     def test_numbers_follow_dependencies(self):
         result = plan("llm-service", FULL, set())
         order = titles(result)
-        self.assertEqual(order[0], "Foundation")
+        self.assertEqual(order[0], "Serving contract & stub")
+        self.assertEqual(order[1], "Foundation")
         for later in ("Prompt router", "Knowledge base + RAG"):
             self.assertLess(order.index("Evaluation & quality"), order.index(later))
         self.assertLess(order.index("LLM gateway"), order.index("Guardrails"))
@@ -165,11 +166,22 @@ class LibraryTests(unittest.TestCase):
         self.assertLess(order.index("Edge optimization"), order.index("Serving & release"))
         self.assertLess(order.index("Robustness & field validation"), order.index("Deployment & launch readiness"))
 
+    def test_stub_is_first_everywhere_but_poc_and_precedes_serving(self):
+        for name, answers in (("llm-service", FULL), ("agent", {}), ("batch-pipeline", {}),
+                              ("classical-ml", {"serving": "online"}), ("perception", {"serving": "online"}),
+                              ("fine-tuning", {}), ("ml-platform", {})):
+            order = titles(plan(name, answers, set()))
+            self.assertEqual(order[0], "Serving contract & stub", name)
+        self.assertNotIn("E64", plan("poc", {}, set())["epics"])
+        order = titles(plan("classical-ml", {"serving": "online"}, set()))
+        self.assertLess(order.index("Serving contract & stub"), order.index("Serving & release"))
+
     def test_ml_platform_order_and_optional(self):
         result = plan("ml-platform", {"llmops": "no"}, set())
         self.assertNotIn("E63", result["epics"])
         order = titles(result)
-        self.assertEqual(order[0], "Compute & environments")
+        self.assertEqual(order[0], "Serving contract & stub")
+        self.assertLess(order.index("Compute & environments"), order.index("Model serving"))
         self.assertEqual(order[-1], "Developer experience & adoption")
         self.assertLess(order.index("Tracking & registry"), order.index("Pipelines & orchestration"))
 
@@ -205,7 +217,7 @@ class LibraryTests(unittest.TestCase):
         order = titles(result)
         self.assertLess(order.index("Safety, licensing & governance"), order.index("Packaging & serving"))
         self.assertEqual(order[-1], "Deployment & launch readiness")
-        self.assertEqual(len(result["specs"]), 10)
+        self.assertEqual(len(result["specs"]), 11)
 
     def test_llm_service_has_no_custom_ml_epic(self):
         self.assertEqual(set(plan("llm-service", {"custom_ml": "yes"}, set())["epics"]),

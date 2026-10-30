@@ -2,7 +2,7 @@
 archetype: llm-service
 title: Production LLM service (optional RAG, tools, custom ML, streaming)
 description: A request/response service built on a hosted or self-hosted LLM, possibly with retrieval, tools, a custom model and streaming.
-library_version: 0.7.0
+library_version: 0.9.0
 source: course template "ai_app_template" (15 epics)
 phases: [discover, build, harden, launch]
 ---
@@ -77,6 +77,8 @@ project.
 
 ```yaml
 bundles:
+  - title: Serving contract & stub
+    members: [E64]
   - title: Foundation
     members: [E02, E03, E11]
   - title: LLM gateway

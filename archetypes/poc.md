@@ -2,7 +2,7 @@
 archetype: poc
 title: AI feasibility study / proof of concept
 description: A short, timeboxed spike that answers "does this work well enough to be worth building?" and ends in a go / no-go with a recommended production archetype.
-library_version: 0.7.0
+library_version: 0.9.0
 source: drafted from general practice; to be corrected from delivered projects
 phases: [discover, build, harden, launch]
 ---

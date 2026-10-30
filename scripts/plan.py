@@ -184,6 +184,7 @@ def plan(archetype: str, answers: dict, dropped: set[str], includes: dict | None
                 for d in epics[m].get("depends_on", []) + epics[m].get("after", []) if d in owner}
         bundle["depends_on"] = sorted(deps - {bundle["title"]})
         bundle["rank"] = (min(phases.index(epics[m]["phase"]) for m in bundle["members"]),
+                          0 if any(epics[m].get("first") for m in bundle["members"]) else 1,
                           min(bundle["members"]))
         bundle["status"] = "planned" if any(status[m] == "planned" for m in bundle["members"]) else "undecided"
 

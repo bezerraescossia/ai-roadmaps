@@ -3,7 +3,7 @@ archetype: classical-ml
 title: Classical ML / predictive model
 description: A model you train on your own data for a defined prediction task (classification, regression, ranking, forecasting, anomaly detection, recommendation), then serve, monitor and retrain.
 exposes: E31
-library_version: 0.7.0
+library_version: 0.9.0
 source: drafted from general practice (CRISP-ML(Q), MLOps maturity models); to be corrected from delivered projects
 phases: [discover, build, harden, launch]
 ---
@@ -69,6 +69,8 @@ epic_rules:
 
 ```yaml
 bundles:
+  - title: Serving contract & stub
+    members: [E64]
   - title: Data assessment
     members: [E17]
   - title: Data & feature pipeline

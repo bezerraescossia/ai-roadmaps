@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.9.0 — 2026-10-29
+
+- New epic `E64` **Serving Contract & Stub**, the first spec of every archetype except `poc`. It agrees the
+  consumer/provider contract up front (schemas, errors, versioning, auth, field semantics), publishes a
+  hosted stub with constant canonical responses plus named fixtures (error, empty, low confidence,
+  timeout), records consumer sign-off, and keeps a revision window until the first real release. Contract
+  tests are the capability `contract-tests` (production tier).
+- `E31`, `E58` and `E15` depend on `E64`; the real serving epics implement the contract instead of defining it.
+- Epic frontmatter `first: true` sorts an epic ahead of the others in its phase when the planner breaks ties.
+- Archetype `library_version` is now 0.9.0.
+
+## 0.8.0 — 2026-10-28
+
+- The intake reads the project brief (`./brief.md`, `./docs/brief.md` or `.specify/brief.md`) after the
+  constitution and uses it to pre-fill interview answers, Vision & End States, `C-nn` constraints and Open
+  Questions. The constitution wins on conflicts, which are reported. The brief's path is stored in the
+  provenance JSON and amend mode re-reads it.
+
 ## 0.7.0 — 2026-10-28
 
 - `skills/roadmap-intake/SKILL.md`: a standalone global skill, generated from the extension's intake command

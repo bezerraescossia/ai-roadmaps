@@ -3,7 +3,7 @@ archetype: fine-tuning
 title: Fine-tuning / model adaptation
 description: Adapting a pre-trained model (LLM, embedding, vision, speech) to your task with your own data (supervised tuning, parameter-efficient tuning, preference tuning, distillation) and then evaluating, packaging and serving it.
 exposes: E31
-library_version: 0.7.0
+library_version: 0.9.0
 source: drafted from general practice; to be corrected from delivered projects
 phases: [discover, build, harden, launch]
 ---
@@ -73,7 +73,7 @@ Rules:
 epic_rules:
   E15: {depends_on: [E31, E45, E47]}
   E30: {depends_on: [E44, E47]}
-  E31: {depends_on: [E30]}
+  E31: {depends_on: [E30, E64]}
   E32: {applies_when: "continuous == yes", depends_on: [E31]}
   E33: {applies_when: "continuous == yes", depends_on: [E45, E47, E30, E32]}
 ```
@@ -84,6 +84,8 @@ epic_rules:
 
 ```yaml
 bundles:
+  - title: Serving contract & stub
+    members: [E64]
   - title: Data assessment
     members: [E17]
   - title: Adaptation strategy

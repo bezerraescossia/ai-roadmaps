@@ -9,16 +9,18 @@ the roadmap's status in step with specify and implement. Derived in part from `s
 
 | Archetype | For | Specs (typical) |
 |---|---|---|
-| `llm-service` | A request/response service on an LLM, optional RAG, tools, streaming (from a course template) | 8-11 |
+| `llm-service` | A request/response service on an LLM, optional RAG, tools, streaming (from a course template) | 9-12 |
 | `poc` | A timeboxed feasibility study that ends in a go / no-go and a recommended production archetype | 4 |
-| `batch-pipeline` | Offline or scheduled processing of many items (documents, records) with human review of low-confidence results | 10-13 |
-| `classical-ml` | A model you train on your data, then serve, monitor and retrain | 9-10 |
-| `agent` | An LLM system that plans and acts through tools, with bounded autonomy, state and human oversight | 9-15 |
-| `fine-tuning` | Adapting a pre-trained model with your data: strategy, data, evaluation harness, training, safety, serving | 8-10 |
-| `perception` | Vision, speech and audio models: capture and labeling, condition coverage, optional edge deployment, field validation | 12-14 |
-| `ml-platform` | The shared MLOps platform for internal ML teams, ending in a pilot team | 9-10 |
+| `batch-pipeline` | Offline or scheduled processing of many items (documents, records) with human review of low-confidence results | 11-14 |
+| `classical-ml` | A model you train on your data, then serve, monitor and retrain | 10-11 |
+| `agent` | An LLM system that plans and acts through tools, with bounded autonomy, state and human oversight | 10-16 |
+| `fine-tuning` | Adapting a pre-trained model with your data: strategy, data, evaluation harness, training, safety, serving | 9-11 |
+| `perception` | Vision, speech and audio models: capture and labeling, condition coverage, optional edge deployment, field validation | 13-15 |
+| `ml-platform` | The shared MLOps platform for internal ML teams, ending in a pilot team | 10-11 |
 
-`llm-service` comes from the course; the other seven are drafted from general practice and should be corrected from projects you have delivered. Epics are shared across archetypes where
+`llm-service` comes from the course; the other seven are drafted from general practice and should be corrected from projects you have delivered. Every archetype except `poc` starts with a **Serving contract & stub** spec (`E64`): the contract between
+consumer and provider, a hosted stub returning constant dummy values, and consumer sign-off, so consumers
+integrate before the real service exists. The real serving epics then implement that contract. Epics are shared across archetypes where
 they fit (observability, cost, evaluation, deployment); an archetype's `epic_rules` can override an epic's
 `applies_when` and `depends_on`.
 
@@ -70,7 +72,7 @@ through `$AI_ROADMAPS_HOME`. After editing `commands/speckit.roadmap.intake.md`,
 
 | Command | Role |
 |---|---|
-| `speckit.roadmap.intake` | create or amend the roadmap (reads the constitution) |
+| `speckit.roadmap.intake` | create or amend the roadmap (reads the constitution and `brief.md`) |
 | `speckit.roadmap.next` | `before_specify` hook: load the first unfinished epic |
 | `speckit.roadmap.specified` | `after_specify` hook: status `specced` + `Spec dir` |
 | `speckit.roadmap.implemented` | `after_implement` hook: `implemented` or `in-progress` |

@@ -4,7 +4,7 @@ title: Deployment, Scaling & Launch Readiness
 archetypes: [llm-service, batch-pipeline, classical-ml, agent, fine-tuning, perception]
 requires: core
 applies_when: always
-depends_on: [E03, E10, E12]
+depends_on: [E03, E10, E12, E64]
 phase: launch
 ---
 

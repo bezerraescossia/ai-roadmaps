@@ -2,7 +2,7 @@
 archetype: ml-platform
 title: ML platform / MLOps foundation
 description: The shared platform that ML teams build on (environments and compute, data and features, tracking and registry, pipelines, serving, CI/CD, monitoring, governance, adoption). The users are internal practitioners.
-library_version: 0.7.0
+library_version: 0.9.0
 source: drafted from general practice (MLOps maturity models); to be corrected from delivered projects
 phases: [discover, build, harden, launch]
 ---
@@ -66,6 +66,8 @@ Rules:
 
 ```yaml
 bundles:
+  - title: Serving contract & stub
+    members: [E64]
   - title: Compute & environments
     members: [E54]
   - title: Data & feature platform

@@ -4,7 +4,7 @@ title: Model Serving & Release
 archetypes: [classical-ml, perception, fine-tuning]
 requires: core
 applies_when: always
-depends_on: [E30]
+depends_on: [E30, E64]
 phase: build
 ---
 

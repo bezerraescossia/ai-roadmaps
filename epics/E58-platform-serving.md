@@ -4,7 +4,7 @@ title: Model Serving Infrastructure
 archetypes: [ml-platform]
 requires: core
 applies_when: always
-depends_on: [E54, E56]
+depends_on: [E54, E56, E64]
 phase: build
 ---
 

@@ -2,7 +2,7 @@
 archetype: agent
 title: Autonomous agent / multi-step workflow
 description: An LLM system that plans and carries out multi-step tasks by calling tools, with bounded autonomy, state, and human oversight where actions matter.
-library_version: 0.7.0
+library_version: 0.9.0
 source: drafted from general practice and reuse of the llm-service epics; to be corrected from delivered projects
 phases: [discover, build, harden, launch]
 ---
@@ -83,7 +83,7 @@ epic_rules:
   E11: {depends_on: [E10], after: [E03]}
   E14: {depends_on: [E02, E35]}
   E24: {applies_when: "human_oversight == yes", depends_on: [E36], after: [E38]}
-  E15: {depends_on: [E10, E12], after: [E03]}
+  E15: {depends_on: [E10, E12, E64], after: [E03]}
   E02: {depends_on: [E16]}
 ```
 
@@ -93,6 +93,8 @@ epic_rules:
 
 ```yaml
 bundles:
+  - title: Serving contract & stub
+    members: [E64]
   - title: Foundation
     members: [E02, E03]
   - title: LLM integration & reliability

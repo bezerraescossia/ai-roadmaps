@@ -3,7 +3,7 @@ archetype: perception
 title: Perception model (vision, speech, audio)
 description: A model that understands images, video or audio (classification, detection, segmentation, OCR, speech recognition), including data capture and labeling, condition coverage, optional edge deployment, and field validation.
 exposes: E31
-library_version: 0.7.0
+library_version: 0.9.0
 source: drafted from general practice; reuses the classical-ml epics with perception notes; to be corrected from delivered projects
 phases: [discover, build, harden, launch]
 ---
@@ -66,7 +66,7 @@ Rules:
 epic_rules:
   E27: {depends_on: [E17, E49]}
   E28: {depends_on: [E27, E50]}
-  E31: {depends_on: [E30], after: [E51]}
+  E31: {depends_on: [E30, E64], after: [E51]}
   E15: {depends_on: [E31, E32, E52]}
 ```
 
@@ -76,6 +76,8 @@ epic_rules:
 
 ```yaml
 bundles:
+  - title: Serving contract & stub
+    members: [E64]
   - title: Data assessment
     members: [E17]
   - title: Capture & labeling
