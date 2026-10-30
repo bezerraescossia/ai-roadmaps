@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.0 — 2026-10-30
+
+- Library restarted. All earlier archetypes and the shared `epics/` pool are removed; archetypes are rebuilt
+  one at a time and each owns its epics in `archetypes/<slug>/`.
+- New archetype `traditional-ml` (Traditional Machine Learning Algorithms) following CRISP-ML(Q): six epics,
+  one per phase, each one spec, in a linear dependency chain. `loops_back_to` records the methodology's
+  iteration edges and never blocks. All epics are always included; the seven intake answers tailor items
+  inside them. Items the library adds to the methodology are marked `(added)`.
+- Epics carry a relative `weight`. `plan.py` generates a Mermaid Gantt (`--weights` overrides, `--start`
+  for real dates) plus `loop_backs`, and the roadmap template has a `## Timeline` section for them.
+- Removed: `applies_when`, `epic_rules`, bundles, `includes`, profiles and capabilities, interview 1 and
+  `select_archetypes.py` (`plan.py --list` replaces it). The intake is one interview.
+
 ## 0.9.0 — 2026-10-29
 
 - New epic `E64` **Serving Contract & Stub**, the first spec of every archetype except `poc`. It agrees the

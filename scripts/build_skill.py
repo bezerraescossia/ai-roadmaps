@@ -16,7 +16,7 @@ TARGET = ROOT / "skills" / "roadmap-intake" / "SKILL.md"
 
 LOCATE = """1. **Locate the library and the roadmap.** The library root `<lib>` is `$AI_ROADMAPS_HOME` if set, else the
    directory two levels above this skill's real path (`readlink -f` of this skill's directory), else
-   `~/bezerraescossia/ai-roadmaps`. It must contain `epics/`, `archetypes/` and `scripts/plan.py`;
+   `~/bezerraescossia/ai-roadmaps`. It must contain `archetypes/` and `scripts/plan.py`;
    otherwise abort and say what is missing. In every command and path below, replace `<lib>` with that root.
    `roadmap_path` is `.specify/memory/roadmap.md` if `.specify/` exists in the current project, else
    `./roadmap.md`; `roadmap_exists` says whether that file exists.

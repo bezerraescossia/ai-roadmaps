@@ -2,24 +2,24 @@
 # requires-python = ">=3.11"
 # dependencies = ["pyyaml"]
 # ///
-"""Select epics from intake answers and order the bundles of one or more archetypes.
+"""Order the epics of one archetype into numbered specs, one spec per epic.
 
 Usage:
-  uv run scripts/plan.py --archetype llm-service --answers '{"rag": "yes"}' [--drop E14 ...]
-  uv run scripts/plan.py --archetype llm-service --answers '{...}' \
-      --include '{"classical-ml": {"serving": "online"}}' \
-      --profile production --strike canary-release --add mcp
+  uv run scripts/plan.py --list
+  uv run scripts/plan.py --archetype traditional-ml --answers '{"serving": "online"}' [--drop E5 ...]
+      [--weights '{"E3": 6}'] [--start 2026-11-02]
 
-`--profile` (prototype, production or critical) sets which optional capabilities are on by default: an epic's
-scope bullets tagged `[cap: <id>, tier: <tier>]` are included when the profile reaches their tier. `--strike`
-turns capabilities off and `--add` turns them on.
+An archetype lives in `archetypes/<slug>/`: `archetype.md` (frontmatter, an `intake` yaml block) and its epic
+files `E*.md` (frontmatter: id, title, phase, depends_on, weight, loops_back_to). Every epic is always in the
+roadmap. Intake answers tailor the items inside the epics and never include or exclude one, so they are
+only echoed back. `loops_back_to` is informational and never orders or blocks anything.
 
-`--include` adds archetypes the primary one declares under `includes` (a project that also builds, say, a
-classical-ML model). Their intake answers are kept apart, so the same variable name can mean different
-things in different archetypes. Epics shared by several archetypes appear once: an epic is selected when
-any archetype selects it, and its `depends_on` and `after` are the union across archetypes.
+Each epic has a relative `weight` (default 1; proportional, not an estimate) that sizes its bar in the
+Mermaid Gantt chart. The chart is drawn from `depends_on`, one bar after another. Without `--start` it uses a
+placeholder start and its axis counts relative days; with `--start` it uses real dates.
 
-Prints JSON: selected epics, numbered specs (bundles) in dependency order, and conflicts.
+Prints JSON: the epics, numbered specs in dependency order, conflicts (a dropped epic that another needs),
+and `gantt` (Mermaid source) with `loop_backs` (the edges a Gantt cannot draw).
 """
 import argparse
 import json
@@ -30,10 +30,8 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
+ARCHETYPES = ROOT / "archetypes"
 FENCE = re.compile(r"```yaml\n(.*?)```", re.S)
-STRENGTH = {"planned": 2, "undecided": 1}
-PROFILES = ["prototype", "production", "critical"]
-CAP = re.compile(r"^- \[cap: ([\w-]+), tier: (production|critical)\] (.*)$")
 
 
 def frontmatter(path: Path) -> dict:
@@ -44,8 +42,13 @@ def frontmatter(path: Path) -> dict:
     return yaml.safe_load(match.group(1))
 
 
+def list_archetypes() -> list[dict]:
+    return [{"archetype": meta["archetype"], "title": meta["title"], "description": meta["description"]}
+            for meta in (frontmatter(p) for p in sorted(ARCHETYPES.glob("*/archetype.md")))]
+
+
 def load_archetype(name: str) -> dict:
-    path = ROOT / "archetypes" / f"{name}.md"
+    path = ARCHETYPES / name / "archetype.md"
     if not path.is_file():
         sys.exit(f"unknown archetype {name!r}")
     meta = frontmatter(path)
@@ -54,182 +57,86 @@ def load_archetype(name: str) -> dict:
     return meta
 
 
-def load_epics(archetype: str, rules: dict) -> dict:
-    """Epics of this archetype, with the archetype's `epic_rules` overrides merged in."""
+def load_epics(name: str) -> dict:
+    """The epics of an archetype by id; `loops_back_to` defaults to none."""
     epics = {}
-    for path in sorted((ROOT / "epics").glob("E*.md")):
+    for path in sorted((ARCHETYPES / name).glob("E*.md")):
         meta = frontmatter(path)
-        if archetype in meta.get("archetypes", []):
-            meta["file"] = path.name
-            meta.update(rules.get(meta["id"], {}))
-            epics[meta["id"]] = meta
-    unknown = set(rules) - set(epics)
-    if unknown:
-        sys.exit(f"{archetype}: epic_rules for epics outside the archetype: {sorted(unknown)}")
+        if meta["id"] in epics:
+            sys.exit(f"{name}: {path.name} repeats {meta['id']}")
+        meta.setdefault("depends_on", [])
+        meta.setdefault("loops_back_to", [])
+        meta.setdefault("weight", 1)
+        meta["file"] = path.name
+        epics[meta["id"]] = meta
+    for epic in epics.values():
+        for ref in epic["depends_on"] + epic["loops_back_to"]:
+            if ref not in epics:
+                sys.exit(f"{name}: {epic['id']} references unknown epic {ref}")
     return epics
 
 
-def applies(epic: dict, answers: dict) -> str | None:
-    """Return 'planned', 'undecided' or None (not selected)."""
-    rule = str(epic.get("applies_when", "always")).strip()
-    if rule == "always":
-        return "planned"
-    match = re.fullmatch(r"(\w+)\s*(==|!=)\s*(\w+)", rule)
-    if not match:
-        sys.exit(f"{epic['id']}: unsupported applies_when {rule!r}")
-    var, op, want = match.groups()
-    got = answers.get(var, "no")
-    if got == "unsure":
-        return "undecided"
-    return "planned" if (got == want) == (op == "==") else None
+def gantt(arch: dict, epics: dict, ordered: list[str], weights: dict, start: str | None) -> str:
+    """Mermaid gantt source: each epic starts when the epics it depends on end."""
+    lines = ["gantt", f"    title {arch['title']} ({arch['methodology']})", "    dateFormat YYYY-MM-DD"]
+    lines.append("    axisFormat %b %d" if start else "    axisFormat Day %j")
+    lines.append("    section Phases")
+    for eid in ordered:
+        deps = [d.lower() for d in epics[eid]["depends_on"] if d in ordered]
+        begin = f"after {' '.join(deps)}" if deps else (start or "2000-01-01")
+        label = f"{eid} {epics[eid]['title']}".replace(":", " ")
+        lines.append(f"    {label} :{eid.lower()}, {begin}, {weights.get(eid, epics[eid]['weight'])}d")
+    return "\n".join(lines)
 
 
-def capabilities_of(epic: dict) -> list[dict]:
-    """Optional capabilities tagged in the epic's Scope (in): [{id, tier, text}, ...]."""
-    text = (ROOT / "epics" / epic["file"]).read_text()
-    scope = re.search(r"## Scope \(in\)\n\n(.*?)(?=\n## )", text, re.S)
-    caps, current = [], None
-    for line in (scope.group(1) if scope else "").splitlines():
-        tagged = CAP.match(line)
-        if tagged:
-            current = {"id": tagged[1], "tier": tagged[2], "text": tagged[3]}
-            caps.append(current)
-        elif line.startswith("- "):
-            current = None
-        elif current and line.strip():
-            current["text"] += " " + line.strip()
-    return caps
+def plan(archetype: str, answers: dict, dropped: set[str], weights: dict | None = None,
+         start: str | None = None) -> dict:
+    weights = weights or {}
+    arch = load_archetype(archetype)
+    epics = load_epics(archetype)
+    unknown = dropped - set(epics)
+    if unknown:
+        sys.exit(f"{archetype}: cannot drop unknown epic(s) {sorted(unknown)}")
+    status = {eid: "dropped" if eid in dropped else "planned" for eid in epics}
 
-
-def merge_archetypes(archetype: str, answers: dict, includes: dict) -> tuple[dict, dict, dict]:
-    """Combine the primary archetype with its included ones.
-
-    Returns (epics, status, arches): merged epic definitions, the per-epic status ('planned' or
-    'undecided', best across archetypes), and the loaded archetype files.
-    """
-    primary = load_archetype(archetype)
-    declared = primary.get("includes", {})
-    for name in includes:
-        if name not in declared:
-            sys.exit(f"{archetype} does not declare {name!r} under `includes` "
-                     f"(declared: {sorted(declared) or 'none'})")
-    order = [(archetype, answers)] + list(includes.items())
-    arches = {name: load_archetype(name) for name, _ in order}
-    per = {name: load_epics(name, arches[name].get("epic_rules", {})) for name, _ in order}
-
-    epics, status = {}, {}
-    for name, ans in order:
-        for eid, epic in per[name].items():
-            if eid not in epics:
-                epics[eid] = dict(epic, depends_on=list(epic.get("depends_on", [])),
-                                  after=list(epic.get("after", [])), origins=[name])
-            else:
-                merged = epics[eid]
-                merged["depends_on"] += [d for d in epic.get("depends_on", []) if d not in merged["depends_on"]]
-                merged["after"] += [d for d in epic.get("after", []) if d not in merged["after"]]
-                merged["origins"].append(name)
-            if epic.get("kind") == "discovery":
-                continue
-            selected = applies(epic, ans)
-            if selected and STRENGTH[selected] > STRENGTH.get(status.get(eid), 0):
-                status[eid] = selected
-
-    # An included archetype's serving epic must exist before the epics that consume the model.
-    for name in includes:
-        exposes = arches[name].get("exposes")
-        if exposes not in per[name]:
-            sys.exit(f"{name}: `exposes` must name one of its epics, got {exposes!r}")
-        for consumer in declared[name].get("consumed_by", []):
-            if consumer in epics and exposes not in epics[consumer]["after"]:
-                epics[consumer]["after"].append(exposes)
-    return epics, status, arches
-
-
-def plan(archetype: str, answers: dict, dropped: set[str], includes: dict | None = None,
-         profile: str = "production", strike: tuple = (), add: tuple = ()) -> dict:
-    includes = includes or {}
-    if profile not in PROFILES:
-        sys.exit(f"unknown profile {profile!r}; choose from {PROFILES}")
-    epics, status, arches = merge_archetypes(archetype, answers, includes)
-    phases = arches[archetype]["phases"]
-    for eid in dropped & set(epics):
-        status[eid] = "dropped"
-
-    conflicts = []
-    for eid, state in status.items():
-        if state == "dropped":
-            continue
-        for dep in epics[eid].get("depends_on", []):
-            if dep not in epics or epics[dep].get("kind") == "discovery":
-                continue
-            if status.get(dep, "dropped") == "dropped":
-                conflicts.append({"epic": eid, "needs": dep,
-                                  "dep_state": "dropped" if dep in dropped else "not selected"})
-
-    live = {e for e, s in status.items() if s != "dropped"}
-    bundles, owner, used_titles = [], {}, set()
-    for name in [archetype, *includes]:
-        for bundle in arches[name]["bundles"]:
-            members = [m for m in bundle["members"] if m in live and m not in owner]
-            if not members:
-                continue
-            title = bundle["title"] if bundle["title"] not in used_titles else f"{bundle['title']} ({name})"
-            used_titles.add(title)
-            owner.update({m: title for m in members})
-            bundles.append({"title": title, "members": members, "archetype": name})
-    unbundled = sorted(live - set(owner))
-    for bundle in bundles:
-        # `after` is a soft ordering: it orders epics when both are selected and never conflicts.
-        deps = {owner[d] for m in bundle["members"]
-                for d in epics[m].get("depends_on", []) + epics[m].get("after", []) if d in owner}
-        bundle["depends_on"] = sorted(deps - {bundle["title"]})
-        bundle["rank"] = (min(phases.index(epics[m]["phase"]) for m in bundle["members"]),
-                          0 if any(epics[m].get("first") for m in bundle["members"]) else 1,
-                          min(bundle["members"]))
-        bundle["status"] = "planned" if any(status[m] == "planned" for m in bundle["members"]) else "undecided"
+    conflicts = [{"epic": eid, "needs": dep, "dep_state": "dropped"}
+                 for eid, epic in epics.items() if status[eid] != "dropped"
+                 for dep in epic["depends_on"] if status[dep] == "dropped"]
 
     ordered, placed = [], set()
-    pending = sorted(bundles, key=lambda b: b["rank"])
+    pending = sorted(e for e in epics if status[e] != "dropped")
     while pending:
-        ready = [b for b in pending if set(b["depends_on"]) <= placed]
+        ready = [e for e in pending if {d for d in epics[e]["depends_on"] if status[d] != "dropped"} <= placed]
         if not ready:
-            sys.exit("dependency cycle among: " + ", ".join(b["title"] for b in pending))
-        pick = min(ready, key=lambda b: b["rank"])
-        ordered.append(pick)
-        placed.add(pick["title"])
-        pending.remove(pick)
+            sys.exit("dependency cycle among: " + ", ".join(pending))
+        ordered.append(ready[0])
+        placed.add(ready[0])
+        pending.remove(ready[0])
 
-    caps = {eid: capabilities_of(epics[eid]) for eid in epics}
-    unknown = (set(strike) | set(add)) - {c["id"] for cs in caps.values() for c in cs}
-    if unknown:
-        sys.exit(f"unknown capability id(s): {sorted(unknown)}")
-    for eid, cs in caps.items():
-        for c in cs:
-            c["epic"] = eid
-            c["selected"] = (c["id"] not in strike) and (c["id"] in add or PROFILES.index(c["tier"]) <= PROFILES.index(profile))
-
-    number = {b["title"]: f"{i:03d}" for i, b in enumerate(ordered, 1)}
-    specs = [{"number": number[b["title"]], "title": b["title"], "members": b["members"],
-              "archetype": b["archetype"], "status": b["status"], "phase": phases[b["rank"][0]],
-              "depends_on": [number[d] for d in b["depends_on"]],
-              "capabilities": [c for m in b["members"] for c in caps[m]]} for b in ordered]
-    return {"archetype": archetype, "includes": includes, "profile": profile,
-            "strike": sorted(strike), "add": sorted(add),
-            "library_version": arches[archetype]["library_version"], "answers": answers,
-            "epics": {e: status[e] for e in sorted(status)}, "specs": specs, "conflicts": conflicts,
-            "unbundled": unbundled}
+    number = {eid: f"{i:03d}" for i, eid in enumerate(ordered, 1)}
+    specs = [{"number": number[eid], "title": epics[eid]["title"], "members": [eid], "archetype": archetype,
+              "status": "planned", "phase": epics[eid]["phase"],
+              "depends_on": [number[d] for d in epics[eid]["depends_on"] if d in number],
+              "loops_back_to": [number[d] for d in epics[eid]["loops_back_to"] if d in number]}
+             for eid in ordered]
+    loop_backs = [{"epic": eid, "loops_back_to": [d for d in epics[eid]["loops_back_to"] if d in number]}
+                  for eid in ordered if epics[eid]["loops_back_to"]]
+    return {"archetype": archetype, "library_version": arch["library_version"], "answers": answers,
+            "epics": status, "specs": specs, "conflicts": conflicts,
+            "gantt": gantt(arch, epics, ordered, weights, start), "loop_backs": loop_backs}
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--archetype", default="llm-service")
+    parser.add_argument("--list", action="store_true", help="list the available archetypes")
+    parser.add_argument("--archetype", default="traditional-ml")
     parser.add_argument("--answers", default="{}", help="JSON object of intake answers")
-    parser.add_argument("--include", default="{}",
-                        help='JSON object: {"<included archetype>": {<its intake answers>}}')
+    parser.add_argument("--weights", default="{}", help="JSON object of epic id to relative weight overrides")
+    parser.add_argument("--start", help="project start date YYYY-MM-DD; omit for a relative axis")
     parser.add_argument("--drop", nargs="*", default=[], help="epic ids the user chose to drop")
-    parser.add_argument("--profile", default="production", choices=PROFILES)
-    parser.add_argument("--strike", nargs="*", default=[], help="capability ids to turn off")
-    parser.add_argument("--add", nargs="*", default=[], help="capability ids to turn on")
     args = parser.parse_args()
-    print(json.dumps(plan(args.archetype, json.loads(args.answers), set(args.drop), json.loads(args.include),
-                          args.profile, tuple(args.strike), tuple(args.add)), indent=2))
+    if args.list:
+        print(json.dumps(list_archetypes(), indent=2))
+    else:
+        print(json.dumps(plan(args.archetype, json.loads(args.answers), set(args.drop),
+                         json.loads(args.weights), args.start), indent=2))

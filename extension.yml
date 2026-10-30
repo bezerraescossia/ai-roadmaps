@@ -2,9 +2,9 @@ schema_version: '1.0'
 extension:
   id: roadmap
   name: AI Roadmap
-  version: 0.2.0
+  version: 1.0.0
   description: >-
-    Assemble a spec roadmap for a new AI project from a reusable epic library (reading the
+    Assemble a spec roadmap for a new AI project from a reusable archetype library (reading the
     constitution), feed the first unfinished epic to /speckit-specify, and keep the roadmap's status in
     step with specify and implement. Replaces the srobroek/speckit-roadmap extension.
   author: rafael.escossia
@@ -21,7 +21,7 @@ provides:
     - name: speckit.roadmap.intake
       file: commands/speckit.roadmap.intake.md
       description: >-
-        Interview briefly, read the constitution, and write the project roadmap from the epic library
+        Interview briefly, read the constitution, and write the project roadmap from an archetype's epics
     - name: speckit.roadmap.next
       file: commands/speckit.roadmap.next.md
       description: >-
@@ -55,7 +55,7 @@ hooks:
     command: speckit.roadmap.intake
     optional: true
     prompt: Create the project roadmap now? (reads the constitution and asks a short intake)
-    description: Assemble the roadmap from the epic library after the constitution
+    description: Assemble the roadmap from an archetype after the constitution
   before_specify:
     command: speckit.roadmap.next
     optional: false

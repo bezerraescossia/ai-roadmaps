@@ -1,53 +1,36 @@
 # ai-roadmaps
 
 A spec-kit extension (`id: roadmap`) that replaces `srobroek/speckit-roadmap`. It assembles a project
-roadmap from a reusable epic library, feeds the first unfinished epic to `/speckit-specify`, and keeps
+roadmap from a reusable archetype library, feeds the first unfinished epic to `/speckit-specify`, and keeps
 the roadmap's status in step with specify and implement. Derived in part from `srobroek/speckit-roadmap`
 (Apache-2.0); see `LICENSE`.
 
 ## Archetypes
 
-| Archetype | For | Specs (typical) |
-|---|---|---|
-| `llm-service` | A request/response service on an LLM, optional RAG, tools, streaming (from a course template) | 9-12 |
-| `poc` | A timeboxed feasibility study that ends in a go / no-go and a recommended production archetype | 4 |
-| `batch-pipeline` | Offline or scheduled processing of many items (documents, records) with human review of low-confidence results | 11-14 |
-| `classical-ml` | A model you train on your data, then serve, monitor and retrain | 10-11 |
-| `agent` | An LLM system that plans and acts through tools, with bounded autonomy, state and human oversight | 10-16 |
-| `fine-tuning` | Adapting a pre-trained model with your data: strategy, data, evaluation harness, training, safety, serving | 9-11 |
-| `perception` | Vision, speech and audio models: capture and labeling, condition coverage, optional edge deployment, field validation | 13-15 |
-| `ml-platform` | The shared MLOps platform for internal ML teams, ending in a pilot team | 10-11 |
+The library is being rebuilt one archetype at a time. Each archetype lives in `archetypes/<slug>/` and owns
+its epics: one epic per phase of its methodology, one spec per epic.
 
-`llm-service` comes from the course; the other seven are drafted from general practice and should be corrected from projects you have delivered. Every archetype except `poc` starts with a **Serving contract & stub** spec (`E64`): the contract between
-consumer and provider, a hosted stub returning constant dummy values, and consumer sign-off, so consumers
-integrate before the real service exists. The real serving epics then implement that contract. Epics are shared across archetypes where
-they fit (observability, cost, evaluation, deployment); an archetype's `epic_rules` can override an epic's
-`applies_when` and `depends_on`.
+| Archetype | For | Methodology | Specs |
+|---|---|---|---|
+| `traditional-ml` | A model you train on your data with classical algorithms, then deploy, monitor and maintain | [CRISP-ML(Q)](https://ml-ops.org/content/crisp-ml) | 6 |
 
-## Projects with more than one archetype
+All of an archetype's epics are always in the roadmap. Intake answers tailor the items inside the epics and
+never include or exclude one; items the answers rule out stay as "not applicable". `depends_on` orders the
+epics; `loops_back_to` records the methodology's iteration edges (for example evaluation back to model
+engineering) and never blocks. Items the library adds to the methodology are marked `(added)`.
 
-Pick the archetype that describes the project as a whole (the primary one). If it also builds a model of
-another kind, include that archetype in the same roadmap: for example an `llm-service` whose tool is backed
-by a classical-ML model. `llm-service`, `agent` and `batch-pipeline` can include `classical-ml`,
-`perception` and `fine-tuning`. The intake asks the included archetype's questions, `plan.py --include`
-merges its specs into one ordered list, and the spec that consumes the model waits for the model's
-"Serving & release" spec. `next` and the hooks keep working on the single roadmap. A model that is its
-own independently deployed project can still get its own roadmap instead.
+Each epic has a relative `weight` (proportional, not an estimate). `plan.py` draws a Mermaid Gantt chart
+from `depends_on` and the weights, with a relative axis or real dates when given `--start`, and the intake
+writes it under `## Timeline` in the roadmap. Loop-backs are listed under the chart, since a Gantt cannot
+draw them.
 
 ## Workflow
 
 1. `/speckit-constitution`. The extension offers the next step afterwards.
-2. `/speckit-roadmap-intake` runs two confirmed interviews and writes the roadmap to
-   `.specify/memory/roadmap.md`:
-   - **Interview 1, which archetypes?** Plain questions about the shape of the project (feasibility study,
-     product or platform; interactive service, agent, batch pipeline or model only; which models you train
-     or adapt). It reads the constitution, derives a primary archetype plus included ones, and you confirm.
-   - **Interview 2, which epics and capabilities?** Each archetype's gating questions (RAG? tools?
-     streaming?), then one profile question: `prototype` (core scope only), `production` (core plus what a
-     production system normally needs) or `critical` (everything: regulated, high stakes, large scale). You
-     see the proposed optional capabilities (for example canary release, semantic cache, MCP) and strike
-     or add; what you drop is listed under Scope (out) as "not needed".
-   Decisions not yet made stay as Open Questions.
+2. `/speckit-roadmap-intake` runs one confirmed interview and writes the roadmap to
+   `.specify/memory/roadmap.md`. It reads the constitution and the brief, you confirm the archetype, then
+   it asks that archetype's intake questions (skipping what the context already answers). Decisions not yet
+   made stay as Open Questions.
 3. `/speckit-specify` (no description needed). The mandatory `before_specify` hook runs
    `speckit.roadmap.next`, which loads the first unfinished epic into the session. Text you type still
    overrides it.
@@ -58,8 +41,7 @@ own independently deployed project can still get its own roadmap instead.
    you to plan/tasks/implement; if it is `undecided` or blocked by a dependency it says that instead.
 
 Re-running `/speckit-roadmap-intake` on an existing roadmap amends it non-destructively; the provenance
-recorded in the roadmap lets it change the profile, bring a capability back, or add an archetype without
-asking again.
+recorded in the roadmap lets it apply a changed or newly answered intake question without asking again.
 
 ## As a global skill
 
@@ -86,11 +68,9 @@ output, because spec-kit's specify takes the text you typed as the feature descr
 
 ```
 extension.yml  config-template.yml  commands/  templates/
-epics/         one markdown file per epic (frontmatter: id, applies_when, depends_on, phase); optional scope
-               bullets are tagged `[cap: <id>, tier: production|critical]`
-archetypes/    one file per archetype: intake questions, epic overrides, bundles (epics grouped into specs);
-               `_selection.md` holds the questions of interview 1
-scripts/       select_archetypes.py (interview 1), plan.py (select + order + capabilities), next.py,
+archetypes/    one folder per archetype: `archetype.md` (intake questions, rules) and its epic files
+               `E*.md` (frontmatter: id, title, phase, depends_on, loops_back_to); one epic = one spec
+scripts/       plan.py (list archetypes, order epics into specs), next.py,
                set_status.py, export_jira_csv.py, build_skill.py,
                roadmap_md.py (shared parser), bash/load-config.sh
 skills/        the generated standalone global skill
